@@ -1,0 +1,60 @@
+spring:
+  application:
+    name: transportes-guias-api
+
+  datasource:
+    url: ${DB_URL:jdbc:h2:file:./data/guias;DB_CLOSE_ON_EXIT=FALSE}
+    driver-class-name: ${DB_DRIVER:org.h2.Driver}
+    username: ${DB_USERNAME:sa}
+    password: ${DB_PASSWORD:}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+  h2:
+    console:
+      enabled: ${H2_CONSOLE_ENABLED:true}
+      path: /h2-console
+
+server:
+  port: ${SERVER_PORT:8080}
+
+# ---- AWS (credenciales por variables de entorno o rol IAM de la EC2) ----
+aws:
+  region: ${AWS_REGION:us-east-1}
+  accessKeyId: ${AWS_ACCESS_KEY_ID:}
+  secretAccessKey: ${AWS_SECRET_ACCESS_KEY:}
+  sessionToken: ${AWS_SESSION_TOKEN:}
+  s3:
+    bucket: ${AWS_S3_BUCKET:transportes-guias-grupo13}
+
+# ---- EFS: punto de montaje dentro del contenedor ----
+efs:
+  mount-path: ${EFS_MOUNT_PATH:/app/efs}
+
+# ---- Azure AD B2C (IDaaS): validacion de los JWT ----
+# JWKS del user flow de B2C, p.ej:
+#   https://<tenant>.b2clogin.com/<tenant>.onmicrosoft.com/<policy>/discovery/v2.0/keys
+# Issuer (iss) del token, p.ej:
+#   https://<tenant>.b2clogin.com/<tenant-id>/v2.0/
+azure:
+  b2c:
+    jwk-set-uri: ${AZURE_B2C_JWK_SET_URI:}
+    issuer: ${AZURE_B2C_ISSUER:}
+    roles-claim: ${AZURE_B2C_ROLES_CLAIM:extension_Role}
+
+# ---- Actuator ----
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+
+logging:
+  level:
+    com.grupo13.transportes: INFO
+    org.springframework.security: INFO
+    software.amazon.awssdk: WARN

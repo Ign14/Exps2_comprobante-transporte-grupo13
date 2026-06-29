@@ -1,0 +1,325 @@
+{
+  "info": {
+    "name": "Transportes Guias API - S6 (API Gateway + B2C) - Grupo 13",
+    "description": "Pruebas S6 a traves del API Gateway con autorizador Lambda (Azure AD B2C). Pega los tokens en las variables tokenGestor y tokenDescarga (obtenidos del user flow B2C en jwt.ms o Postman OAuth2).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://xbb71vq7d5.execute-api.us-east-1.amazonaws.com"
+    },
+    {
+      "key": "guiaId",
+      "value": "1"
+    },
+    {
+      "key": "transportista",
+      "value": "Transportista X"
+    },
+    {
+      "key": "fecha",
+      "value": "2026-06-29"
+    },
+    {
+      "key": "tokenGestor",
+      "value": "PEGA_AQUI_EL_TOKEN_GESTOR"
+    },
+    {
+      "key": "tokenDescarga",
+      "value": "PEGA_AQUI_EL_TOKEN_DESCARGA"
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Sin token - Historial (espera 401)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/guias",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "guias"
+          ]
+        }
+      }
+    },
+    {
+      "name": "1. [GESTOR] Crear guia (POST -> 201)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenGestor}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"transportista\": \"{{transportista}}\",\n  \"rutTransportista\": \"76.543.210-9\",\n  \"cliente\": \"Comercial Andina Ltda\",\n  \"direccionOrigen\": \"Av. Industrial 1200, Santiago\",\n  \"direccionDestino\": \"Camino El Roble 450, Rancagua\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/guias",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "guias"
+          ]
+        }
+      }
+    },
+    {
+      "name": "2. [GESTOR] Subir guia a S3 (POST -> 200)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenGestor}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/guias/{{guiaId}}/subir-s3",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "guias",
+            "{{guiaId}}",
+            "subir-s3"
+          ]
+        }
+      }
+    },
+    {
+      "name": "3. [GESTOR] Historial por transportista y fecha (GET -> 200)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenGestor}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/guias?transportista={{transportista}}&fecha={{fecha}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "guias"
+          ],
+          "query": [
+            {
+              "key": "transportista",
+              "value": "{{transportista}}"
+            },
+            {
+              "key": "fecha",
+              "value": "{{fecha}}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "4. [GESTOR] Detalle de guia (GET -> 200)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenGestor}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/guias/{{guiaId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "guias",
+            "{{guiaId}}"
+          ]
+        }
+      }
+    },
+    {
+      "name": "5. [GESTOR] Actualizar guia (PUT -> 200)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenGestor}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"cliente\": \"Comercial Andina Ltda (ACTUALIZADO)\",\n  \"direccionDestino\": \"Nueva Direccion 999, Rancagua\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/guias/{{guiaId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "guias",
+            "{{guiaId}}"
+          ]
+        }
+      }
+    },
+    {
+      "name": "6. [GESTOR] Descargar (GET -> 403, GESTOR no descarga)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenGestor}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/guias/{{guiaId}}/descargar",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "guias",
+            "{{guiaId}}",
+            "descargar"
+          ]
+        }
+      }
+    },
+    {
+      "name": "7. [DESCARGA] Descargar (GET -> 200 + PDF)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenDescarga}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/guias/{{guiaId}}/descargar",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "guias",
+            "{{guiaId}}",
+            "descargar"
+          ]
+        }
+      }
+    },
+    {
+      "name": "8. [DESCARGA] Crear guia (POST -> 403, DESCARGA no crea)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenDescarga}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"transportista\": \"{{transportista}}\",\n  \"rutTransportista\": \"76.543.210-9\",\n  \"cliente\": \"Comercial Andina Ltda\",\n  \"direccionOrigen\": \"Av. Industrial 1200, Santiago\",\n  \"direccionDestino\": \"Camino El Roble 450, Rancagua\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/guias",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "guias"
+          ]
+        }
+      }
+    },
+    {
+      "name": "9. [GESTOR] Eliminar guia de S3 (DELETE -> 200)",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{tokenGestor}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/guias/{{guiaId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "guias",
+            "{{guiaId}}"
+          ]
+        }
+      }
+    },
+    {
+      "name": "10. Health check (GET -> 200, publico)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/actuator/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "actuator",
+            "health"
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+target/
+data/
+efs-local/
+.git/
+.github/
+.idea/
+*.iml
+docs/
+*.log
+README.md

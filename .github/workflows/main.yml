@@ -1,0 +1,98 @@
+name: CI-CD Transportes Guias API
+
+# Despliegue automatizado al hacer push a la rama principal.
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+env:
+  IMAGE_NAME: transportes-guias-api
+
+jobs:
+  # ----------------------------------------------------------
+  # 1) Compila, testea y publica la imagen en Docker Hub
+  # ----------------------------------------------------------
+  build-and-push:
+    name: Build & Push Docker image
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.meta.outputs.image }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Build & test (Maven)
+        run: mvn -B clean package
+
+      - name: Definir tag de imagen
+        id: meta
+        run: echo "image=${{ secrets.DOCKERHUB_USERNAME }}/${IMAGE_NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Login en Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build & Push (latest + sha)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.image }}:latest
+            ${{ steps.meta.outputs.image }}:${{ github.sha }}
+
+  # ----------------------------------------------------------
+  # 2) Despliega en EC2 por SSH con el volumen EFS montado
+  # ----------------------------------------------------------
+  deploy-ec2:
+    name: Deploy to EC2
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Desplegar via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+            IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/transportes-guias-api:latest"
+
+            echo ">> Asegurando montaje de EFS en /mnt/efs"
+            sudo mkdir -p /mnt/efs
+
+            echo ">> Descargando ultima imagen"
+            docker pull "$IMAGE"
+
+            echo ">> Reiniciando contenedor"
+            docker stop transportes-guias-api || true
+            docker rm transportes-guias-api || true
+
+            docker run -d \
+              --name transportes-guias-api \
+              --restart unless-stopped \
+              -v /mnt/efs:/app/efs \
+              -p 8080:8080 \
+              -e AWS_REGION="${{ secrets.AWS_REGION }}" \
+              -e AWS_S3_BUCKET="${{ secrets.AWS_S3_BUCKET }}" \
+              -e EFS_MOUNT_PATH="/app/efs" \
+              "$IMAGE"
+
+            # Nota: no se pasan AWS_ACCESS_KEY_ID/SECRET/SESSION_TOKEN.
+            # El contenedor obtiene credenciales del rol IAM de la EC2 (LabRole)
+            # via el metadata de la instancia; el SDK de AWS las renueva solo,
+            # evitando la expiracion de los tokens temporales del Learner Lab.
+
+            echo ">> Limpiando imagenes huerfanas"
+            docker image prune -f
